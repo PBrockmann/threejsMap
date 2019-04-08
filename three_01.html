@@ -1,0 +1,1038 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+
+	<style>
+	.mapContainer { 
+		float: left; 
+		padding: 5px;
+	}
+	.mapContainer:hover { visibility: visible; }
+	.mapTitle { 
+		font-size: 12px; 
+		float: left; 
+		white-space: nowrap; 
+		overflow: hidden; 
+		text-overflow: ellipsis; 
+	}
+	.mapControls { 
+		font-size: 12px; 
+		float: right;  
+		visibility: hidden; 
+		position: relative;
+		top: -2px;
+	}
+	.mapKStep { 
+		font-size: 12px; 
+		position: relative;
+		float: right;
+		white-space: nowrap; 
+		overflow: hidden; 
+		text-overflow: ellipsis;
+		right: 90px;
+	}
+	.mapLStep { 
+		font-size: 12px; 
+		position: relative;
+		float: right;
+		white-space: nowrap; 
+		overflow: hidden; 
+		text-overflow: ellipsis;
+		right: -20px;
+	}
+	.mapHeader {
+		height: 18px;
+	}
+	.mapContainer:hover > .mapHeader > .mapControls { visibility: visible; }
+	.controls {
+		width: 500px;
+		margin-top: 40px;
+	}
+	.controlsItem {
+		text-align: center;
+	}
+	.fa {
+		cursor: pointer;
+		opacity: 0.7 !important;
+		margin-top: 5px;
+	}
+	.playControls {
+		margin-top: 20px;
+		text-align: center;
+	}
+	.playControls > div {
+		padding: 2px;
+	}
+	.mapColorBar {
+		font-size: 10px;
+		margin-top: 20px;
+		text-align: center;
+	}
+	.modal-dialog {
+		width: 350px !important;
+		margin: 100px !important;
+	}
+	.modal {
+		right: unset !important;
+	}
+	.labelSlider {
+		font-size: 12px;
+		position: relative;
+		top: -10px;
+	}
+	.sliderRow {
+		margin-top: 5px;
+		text-align: center;
+	}
+	#changeLevels {
+		width: 250px;
+		display: inline-block;
+	}
+	#selectVariable {
+		width: 300px;
+	}
+	#selectPalette {
+		width: 250px;
+	}
+	label {
+		font-weight: normal !important;
+	}
+	.style1 {
+		margin-top: 10px;	
+		margin-bottom: 10px;
+	};
+	/* Make Select2 boxes match Bootstrap3 heights: */
+	.select2-selection__rendered {
+		line-height: 32px !important;
+	}
+	.select2-selection {
+		height: 34px !important;
+	}
+</style>
+
+<script src="http://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+
+<script src='jquery-ui-1.12.1.custom/jquery-ui.min.js'></script>
+<link rel="stylesheet" href="jquery-ui-1.12.1.custom/jquery-ui.min.css">
+
+<link rel="stylesheet" href="http://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/css/bootstrap.css">
+<script src="http://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/js/bootstrap.js"></script>
+
+<link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.5/css/select2.min.css" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.5/js/select2.min.js"></script>
+
+<link href="https://gitcdn.github.io/bootstrap-toggle/2.2.2/css/bootstrap-toggle.min.css" rel="stylesheet">
+<script src="https://gitcdn.github.io/bootstrap-toggle/2.2.2/js/bootstrap-toggle.min.js"></script>
+
+<link rel="stylesheet" href="jQRangeSlider-5.7.2/css/iThing-min.css">
+<script src="jQRangeSlider-5.7.2/jQRangeSlider-min.js"></script>
+<script src="jQRangeSlider-5.7.2/lib/jquery.mousewheel.min.js"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui-touch-punch/0.2.3/jquery.ui.touch-punch.min.js"></script>
+
+<link rel="stylesheet" href="http://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.css">
+
+<script src="http://d3js.org/d3.v5.min.js"></script>
+<script src="https://d3js.org/d3-queue.v3.min.js"></script>
+<script src="https://d3js.org/d3-request.v1.min.js"></script>
+
+<script src="http://d3js.org/topojson.v1.min.js"></script>
+
+<script src="three.js/build/three.min.js"></script>
+<script src="three.js/controls/TrackballControls.js"></script>
+
+<script src="js/numjs.js"></script>
+
+<script src="https://www.lactame.com/lib/netcdfjs/0.7.0/netcdfjs.js"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3-legend/2.25.6/d3-legend.min.js"></script>
+
+<script>
+
+
+	$( document ).ready(function() {
+
+//######################################################################################################
+// Patrick Brockmann - 2018
+// LSCE / CEA
+//######################################################################################################
+
+// three.js/examples/js/Detector.js
+//if (!Detector.webgl) {
+//  Detector.addGetWebGLMessage();
+//}
+
+container = $('#mapSpace')[0];
+
+width = 300;
+height = 300;
+
+antialias = true;
+
+fov = 10;		// Field of view
+aspect = width / height;
+near = 0.1;
+far = 10000;
+camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
+camera.position.set(0, 0, 1200);
+
+//==============================================================================================
+function pad(value, length) {
+	return (value.toString().length < length) ? pad("0"+value, length):value;
+}
+
+//==============================================================================================
+controls = new THREE.TrackballControls( camera, container );
+controls.rotateSpeed = 5.0;
+controls.zoomSpeed = 2.0;
+controls.panSpeed = 0.8;
+controls.noZoom = false;
+controls.noPan = false;
+controls.staticMoving = true;
+controls.dynamicDampingFactor = 0.2;
+
+//==============================================================================================
+var radius = 100;
+var lon0 = 30;
+var lat0 = 45;
+
+//==============================================================================================
+// Converts a point [longitude, latitude] in degrees to a THREE.Vector3.
+function vertex(point, scaleFactor) {
+	var radius1 = radius * scaleFactor;
+	var lambda = point[0] * Math.PI / 180,
+	phi = point[1] * Math.PI / 180,
+	cosPhi = Math.cos(phi);
+	return new THREE.Vector3(
+		radius1 * cosPhi * Math.cos(lambda),
+		radius1 * cosPhi * Math.sin(lambda),
+		radius1 * Math.sin(phi)
+		);
+}
+
+//==============================================================================================
+function createLineSegments(multilinestring, material) {
+	var geometry = new THREE.Geometry;
+	multilinestring.coordinates.forEach(function(line) {
+		d3.pairs(line.map(function(x) { return vertex(x, 1.01); }), function(a, b) {
+			geometry.vertices.push(a, b);
+		});
+	});
+	return new THREE.LineSegments(geometry, material);
+}
+
+//==============================================================================================
+function meshCreate(grid, values) {				// quad is made from 2 triangles
+	var geometry = new THREE.Geometry;
+	var id = 0;
+	for (var i=0; i<grid.length; i++) {
+		cell = grid[i];
+		for (var j=0; j<cell.length; j++) {
+			geometry.vertices.push(vertex(cell[j], 1.0));
+		}
+    		// counter-clockwise
+    		face = new THREE.Face3(id, id+2, id+1);
+    		face.area = values.get(i);
+    		geometry.faces.push(face);
+    		face = new THREE.Face3(id, id+3, id+2);
+    		face.area = values.get(i);
+    		geometry.faces.push(face);
+    		id = id + 4;
+	}
+	//console.log(geometry.faces.length);
+	return new THREE.Mesh( geometry, new THREE.MeshBasicMaterial( { vertexColors: THREE.FaceColors, wireframe: false}) );
+	//return new THREE.Mesh( geometry, new THREE.MeshBasicMaterial( { wireframe: true }) );
+}
+
+//==============================================================================================
+function wireframeCreate(grid) {
+	var geometry = new THREE.Geometry;
+	var id = 0;
+	for (var i=0; i<grid.length; i++) {
+		cell = grid[i];
+		geometry.vertices.push(vertex(cell[0], 1.0));   // pt0 --> pt1
+		geometry.vertices.push(vertex(cell[1], 1.0));
+		geometry.vertices.push(vertex(cell[1], 1.0));   // pt1 --> pt2
+		geometry.vertices.push(vertex(cell[2], 1.0));
+		geometry.vertices.push(vertex(cell[2], 1.0));   // pt2 --> pt3
+		geometry.vertices.push(vertex(cell[3], 1.0));
+		geometry.vertices.push(vertex(cell[3], 1.0));   // pt3 --> pt0
+		geometry.vertices.push(vertex(cell[0], 1.0));
+	}
+	return new THREE.LineSegments(geometry, new THREE.LineBasicMaterial({color: 0xcccccc, linewidth: 1}));
+}
+
+//==============================================================================================
+// See https://github.com/d3/d3-geo/issues/95
+function graticule10() {
+	var epsilon = 1e-6,
+	x1 = 180, x0 = -x1, y1 = 80, y0 = -y1, dx = 10, dy = 10,
+	X1 = 180, X0 = -X1, Y1 = 90, Y0 = -Y1, DX = 90, DY = 360,
+	x = graticuleX(y0, y1, 2.5), y = graticuleY(x0, x1, 2.5),
+	X = graticuleX(Y0, Y1, 2.5), Y = graticuleY(X0, X1, 2.5);
+
+	function graticuleX(y0, y1, dy) {
+		var y = d3.range(y0, y1 - epsilon, dy).concat(y1);
+		return function(x) { return y.map(function(y) { return [x, y]; }); };
+	}
+
+	function graticuleY(x0, x1, dx) {
+		var x = d3.range(x0, x1 - epsilon, dx).concat(x1);
+		return function(y) { return x.map(function(x) { return [x, y]; }); };
+	}
+
+	return {
+		type: "MultiLineString",
+		coordinates: d3.range(Math.ceil(X0 / DX) * DX, X1, DX).map(X)
+		.concat(d3.range(Math.ceil(Y0 / DY) * DY, Y1, DY).map(Y))
+		.concat(d3.range(Math.ceil(x0 / dx) * dx, x1, dx).filter(function(x) { return Math.abs(x % DX) > epsilon; }).map(x))
+		.concat(d3.range(Math.ceil(y0 / dy) * dy, y1 + epsilon, dy).filter(function(y) { return Math.abs(y % DY) > epsilon; }).map(y))
+	};
+}
+
+
+//==============================================================================================
+var levels = {min: -100, max: 100};
+var bounds = {min: -200, max: 200};
+
+var graticule;
+var continents;
+var dict = {};
+
+var lsize;
+var lcurrent = 1;
+var kcurrent = 1;
+
+//==============================================================================================
+function readVariable(urlpath, varName, callback) {
+
+	console.log("===============================");
+	console.log(urlpath);
+	console.log(varName);
+
+	var values = [];
+	var grid;
+	var request = new XMLHttpRequest();
+	var reader;
+	var varLongName;
+
+	request.open("GET", urlpath, true);		// 3rd arg = synchronous (false) or asynchronous (true)
+	request.responseType = "blob";
+
+	request.onload = function(oEvent) {
+		var blob = request.response;
+		reader_url = new FileReader();
+
+		reader_url.onload = function(e) {
+        	//====================================================================================
+        	reader = new netcdfjs(this.result);
+
+        	varArrays = reader.variables;
+        	console.log(varArrays);
+        	varArrays.forEach(function(varArray) {
+        		if (varArray.name == varName) {
+        			dimIndex = varArray.dimensions;
+        			varAttributes = varArray.attributes;
+        			varLongName = varName;
+        			varMissingValue = 1E+34;
+        			varRecord = varArray.record;
+        			varAttributes.forEach(function(varAttribute) {
+        				if (varAttribute.name == 'long_name') {
+        					varLongName = varAttribute.value;
+        				} else if (varAttribute.name == 'missing_value') {
+        					varMissingValue = varAttribute.value;
+        				}
+        			});
+        		}
+        	});
+
+        	console.log(dimIndex);
+        	console.log('Missing value: ', varMissingValue);
+        	console.log(varRecord);
+
+        	dim1 = reader.dimensions[dimIndex[dimIndex.length-1]];
+        	isize = dim1.size;
+        	dim2 = reader.dimensions[dimIndex[dimIndex.length-2]];
+        	jsize = dim2.size;
+
+        	if (dimIndex.length == 2) {
+        		ksize = 1;
+        		lsize = 1;
+        	} else if (dimIndex.length == 3) { 
+        		dim3 = reader.dimensions[dimIndex[dimIndex.length-3]];
+        		if (dim3.size == 0) {
+        			dim3 = reader.recordDimension
+        			ksize = 1;
+        			lsize = dim3.length;
+        		} else {
+        			ksize = dim3.size;
+        			lsize = 1;
+        		}
+        	} else if (dimIndex.length == 4) {
+        		dim3 = reader.dimensions[dimIndex[dimIndex.length-3]];
+        		ksize = dim3.size;
+        		dim4 = reader.dimensions[dimIndex[dimIndex.length-4]];
+        		if (dim4.size == 0) {
+        			dim4 = reader.recordDimension
+        			lsize = dim4.length;
+        		} else {
+        			lsize = dim4.size;
+        		}
+        	}
+
+        	console.log(lsize,ksize,jsize,isize);
+
+			values = reader.getDataVariable(varName);
+
+			if (varRecord) {
+				values2 = nj.array(values[0].filter(function(value) { return value != varMissingValue; }));		// first record
+			} else {
+				values2 = nj.array(values.filter(function(value) { return value != varMissingValue; }));
+			}
+			console.log('--- ', varName, values2.min(), values2.max());
+
+			valuesAll = nj.array(values).reshape(lsize,ksize,jsize,isize);
+			values = valuesAll.slice([lcurrent-1,lcurrent],[kcurrent-1,kcurrent],0,0).reshape(jsize*isize);
+			//console.log(values);
+
+			grid = [];
+
+
+			axis1 = reader.getDataVariable(dim1.name);
+			axis2 = reader.getDataVariable(dim2.name);
+			dx = 360/isize;
+			//dy = 180/(jsize-1);		// if > 90 and < -90
+			dy = 180/jsize;
+			console.log("resolution: ", dx, dy);
+			for (var j = 0; j < jsize; j++) {
+				y = axis2[j];
+				for (var i = 0; i < isize; i++) {
+					x = axis1[i];
+					pt = [  [x - dx/2, y - dy/2],
+							[x - dx/2, y + dy/2],
+							[x + dx/2, y + dy/2],
+							[x + dx/2, y - dy/2] 
+						];
+					grid.push(pt);
+				}
+			}
+
+			dict[varName] = {};
+			dict[varName]['mesh'] = meshCreate(grid, values);
+			dict[varName]['wireframe'] = wireframeCreate(grid);
+			dict[varName]['long_name'] = varLongName; 
+			dict[varName]['missing_value'] = varMissingValue; 
+			dict[varName]['values'] = valuesAll;
+			dict[varName]['isize'] = isize;
+			dict[varName]['jsize'] = jsize;
+			dict[varName]['ksize'] = ksize;
+			dict[varName]['lsize'] = lsize;
+
+			//$('#selectVariable').append('<option val="' + varName + '">' + varName + '</option>');
+			var data = { id: varName, text: varName};
+			var newOption = new Option(data.text, data.id, false, false);
+			$('#selectVariable').append(newOption).trigger('change');
+
+		}
+		reader_url.readAsArrayBuffer(blob);
+	};
+	request.send(); //start process
+
+	callback(null);
+
+}
+
+//==============================================================================================
+d3.queue()
+	.defer(d3.json, "https://unpkg.com/world-atlas@1/world/50m.json")
+    	.defer(readVariable, 'FG2_1.nc', 'fluxsens')
+    	.defer(readVariable, 'FG2_1.nc', 'fluxlat')
+    	.defer(readVariable, 'FG2_1.nc', 'temp_sol')
+    	// monthly_navy_winds_01.nc 144x73 unlimited
+    	// monthly_navy_winds_02.nc 144x73 fixed
+    	// monthly_navy_winds_03.nc 360x180 unlimlited 
+    	// monthly_navy_winds_04.nc 360x180 fixed
+    	//.defer(readVariable, 'monthly_navy_winds_01.nc', 'UWND')
+    	//.defer(readVariable, 'monthly_navy_winds_01.nc', 'VWND')
+    	//.defer(readVariable, 'levitus_climatology.nc', 'TEMP')
+    	//.defer(readVariable, 'levitus_climatology.nc', 'SALT')
+    .awaitAll(function(error, data) {
+    	if (error) throw error;
+    	console.log('continents ---> Read');
+    	console.log('data       ---> Read');
+    	console.log(topojson.mesh(data[0], data[0].objects.land));
+    	continents = createLineSegments(topojson.mesh(data[0], data[0].objects.land), new THREE.LineBasicMaterial({ color: 0x444444 }));
+    	graticule = createLineSegments(graticule10(), new THREE.LineBasicMaterial({ color: 0xAAAAAA }));
+    	console.log('################### finished');
+    	$("#selectVariable").select2({ placeholder: 'Select a variable' });
+    });
+
+
+//==============================================================================================
+function meshUpdate(mesh, palette, reversePalette, levels) {
+
+	if (reversePalette) levels1 = [levels.max, levels.min];
+	else levels1 = [levels.min, levels.max]
+
+	colorScale = d3.scaleSequential()
+	.interpolator(d3[palette])
+	.domain(levels1)
+	.clamp(true);
+
+	faces = mesh.geometry.faces;
+	for (var i=0; i<faces.length; i++) {
+		if (faces[i].area != mesh.userData.missing_value) {
+			myColor = d3.color(colorScale(faces[i].area)).rgb();
+			myColor.r = myColor.r/256;
+			myColor.g = myColor.g/256;
+			myColor.b = myColor.b/256;
+			faces[i].color.setRGB(myColor.r, myColor.g, myColor.b);
+		} else {
+			faces[i].color.setRGB(1, 1, 1);
+		}
+	}
+	mesh.geometry.colorsNeedUpdate = true;
+	return mesh;
+}
+
+//==============================================================================================
+function meshUpdateValues(varName, kcurrent, lcurrent) {
+	valuesAll = dict[varName]['values'];
+	isize =  dict[varName]['isize'];
+	jsize =  dict[varName]['jsize'];
+	values = valuesAll.slice([lcurrent-1,lcurrent],[kcurrent-1,kcurrent],0,0).reshape(jsize*isize);
+	mesh = dict[varName]['mesh'];
+	faces = mesh.geometry.faces;
+	j = 0;
+	for (var i=0; i<faces.length; i=i+2) {
+		faces[i].area = values.get(j);
+		faces[i+1].area = values.get(j);
+		j++;
+	}
+	mesh.geometry.faces = faces;
+	dict[varName]['mesh'] = mesh;
+	return 0;
+}
+
+//==============================================================================================
+$("#changeLevels").rangeSlider({bounds: {min: bounds.min, max: bounds.max}},
+	{defaultValues: {min: levels.min, max: levels.max}},
+	{wheelMode: "scroll"});
+$('#sliderMin').text(bounds.min);
+$('#sliderMax').text(bounds.max);
+
+//==============================================================================================
+$('#selectPalette, #reversePalette, #changeLevels, #changesToAll').on("change valuesChanged", function() {
+	console.log('here');
+	palette = $('#selectPalette').val();
+	reversePalette = $('#reversePalette').prop('checked');
+	levels = $('#changeLevels').rangeSlider('values');
+	changedToAll = $('#changesToAll').prop('checked');
+	if (changedToAll) {
+		for (i in group) {
+			displayColorBar(i);
+			meshCurrent = group[i].children[1];		// mesh is at position 1 in the group
+			meshCurrent.userData.palette = palette;
+			meshCurrent.userData.reversePalette = reversePalette;
+			meshCurrent.userData.levels = levels;
+			meshCurrent = meshUpdate(meshCurrent, meshCurrent.userData.palette, meshCurrent.userData.reversePalette, 
+				meshCurrent.userData.levels);
+		}
+	} else {
+		displayColorBar(current_mapId);
+		meshCurrent = group[current_mapId].children[1];
+		meshCurrent.userData.palette = palette;
+		meshCurrent.userData.reversePalette = reversePalette;
+		meshCurrent.userData.levels = levels;
+		meshCurrent = meshUpdate(meshCurrent, meshCurrent.userData.palette, meshCurrent.userData.reversePalette,
+			meshCurrent.userData.levels);
+	}
+});
+
+
+//==============================================================================================
+$('#showWireframe').on('change', function() {
+	showWireframe = $('#showWireframe').prop('checked');
+	changedToAll = $('#changesToAll').prop('checked');
+	if (changedToAll) {
+		for (i in group) {
+			wireframe = group[i].children[2];		// wireframe is at position 2 in the group
+			wireframe.visible = showWireframe;
+		}
+	} else {
+		wireframe = group[current_mapId].children[2];
+		wireframe.visible = showWireframe;
+	}
+});
+
+//==============================================================================================
+$('#showGraticule').on('change', function() {
+	showGraticule = $('#showGraticule').prop('checked');
+	changedToAll = $('#changesToAll').prop('checked');
+	if (changedToAll) {
+		for (i in group) {
+			graticule = group[i].children[0];		// graticule is at position 0 in the group
+			graticule.visible = showGraticule;
+		}
+	} else {
+		graticule = group[current_mapId].children[0];
+		graticule.visible = showGraticule;
+	}
+});
+
+//==============================================================================================
+var renderer = [];
+var scene = [];
+var group = [];
+function render() {
+	requestAnimationFrame(render);
+	controls.update();
+	controls.handleResize();
+	listIds = Object.keys(renderer);
+	for (i in listIds) {
+		Id = listIds[i];
+		renderer[Id].render(scene[Id], camera);
+	}
+	//console.log(camera);
+};
+
+render();
+
+//==============================================================================================
+$(document).on('resizestop', '.map', function() {
+	height = width = Math.max($(this).width(), $(this).height());
+	listIds = Object.keys(renderer);
+	for (i in listIds) {
+		Id = listIds[i];
+		$('#map_'+Id).width(width);
+		$('#map_'+Id).height(height);
+		renderer[Id].setSize(width, height);
+	}
+});
+
+//===============================================
+$(document).on('click', ".mapClose", function() {
+	selected_mapId = this.id.split('_')[1];
+	console.log("close", selected_mapId);
+	$('#map_'+selected_mapId).parent().remove();
+	meshCurrent = group[selected_mapId].children[1];		// mesh is the 2nd object in the group
+	varName = renderer[selected_mapId].varName;
+	delete meshCurrent;
+	delete renderer[selected_mapId];
+	delete scene[selected_mapId];
+	delete group[selected_mapId];
+	$('#selectVariable').append('<option val="' + varName + '">' + varName + '</option>');
+});
+
+//==============================================================================================
+var mapId = 0;
+$('#addMap').on('click', function() {
+
+	varName = $('#selectVariable').val();
+	console.log('---', varName, '---');
+	if (varName == null) return 1;
+
+	//console.log("add map", mapId);
+	divs = "<div id='mapContainer_" + mapId + "' class='mapContainer'>" +
+	"<div id='mapHeader_" + mapId + "' class='mapHeader'>" +
+	"<div id='mapTitle_" + mapId + "' class='mapTitle'></div>" +
+	"<div id='mapControls_" + mapId + "' class='mapControls'>" +
+	"<div id='mapClose_" + mapId + "' class='mapClose fa fa-close'></div>" +
+	"</div>" +
+	"<div id='mapKStep_" + mapId + "' class='mapKStep'></div>" +
+	"<div id='mapLStep_" + mapId + "' class='mapLStep'></div>" +
+	"</div>" +
+	"<div id='map_" + mapId + "' class='map'></div>" +
+	"<div id='mapColorBar_" + mapId + "' class='mapColorBar' data-toggle='modal' data-target='#myModal' data-backdrop=false></div>" +
+	"</div>";
+	$('#mapSpace').append(divs);
+
+	palette = $('#selectPalette').val();
+	levels = $('#changeLevels').rangeSlider("values");
+	bounds = $('#changeLevels').rangeSlider("bounds");
+	$('#selectVariable').find('option:selected').remove();
+	reversePalette = $('#reversePalette').prop('checked');
+
+	displayColorBar(mapId);
+
+	meshClone = dict[varName]['mesh'].clone();
+	meshClone.userData = { palette: palette,
+		reversePalette: reversePalette,
+		levels: levels, 
+		bounds: bounds, 
+		missing_value: dict[varName]['missing_value']
+	};
+	meshClone = meshUpdate(meshClone, meshClone.userData.palette, meshClone.userData.reversePalette, meshClone.userData.levels);
+
+	wireframeClone = dict[varName]['wireframe'].clone();
+	wireframeClone.visible = $('#showWireframe').prop('checked');
+
+	graticuleClone = graticule.clone();
+	graticuleClone.visible = $('#showGraticule').prop('checked');
+
+	renderer[mapId] = new THREE.WebGLRenderer({ antialias: antialias });
+	renderer[mapId].setSize(width, height);
+	renderer[mapId].sortObjects = false;
+	renderer[mapId].varName = varName;
+	$('#map_'+mapId).append(renderer[mapId].domElement);
+	group[mapId] = new THREE.Group();
+	group[mapId].add(graticuleClone);
+	group[mapId].add(meshClone);
+	group[mapId].add(wireframeClone);
+	group[mapId].add(continents.clone());
+	group[mapId].rotation.x = (lat0 - 90) * Math.PI / 180;
+	group[mapId].rotation.z = (lon0- 90) * Math.PI / 180;
+	scene[mapId] = new THREE.Scene();
+	scene[mapId].background = new THREE.Color( 0xeeeeee );
+	scene[mapId].add(camera);
+	scene[mapId].add(group[mapId]);
+
+	$('#map_'+mapId).resizable();
+	$('#map_'+mapId).width(width);
+	$('#map_'+mapId).height(height);
+	$('#mapTitle_'+mapId).html(dict[varName]['long_name']);
+	ksize = dict[varName]['ksize'];
+	$('#mapKStep_'+mapId).html("K=" + pad(kcurrent,String(ksize).length) + '/' + ksize);
+	lsize = dict[varName]['lsize'];
+	$('#mapLStep_'+mapId).html("L=" + pad(lcurrent,String(lsize).length) + '/' + lsize);
+
+	mapId++;
+
+});
+
+//==============================================================================================
+var labelFormat = '.01d';
+function displayColorBar(mapId) {
+
+	palette = $('#selectPalette').val();
+	reversePalette = $('#reversePalette').prop('checked');
+	if (reversePalette == true)
+		levelsArr = [levels.max, levels.min];
+	else 
+		levelsArr = [levels.min, levels.max];
+	colorScale = d3.scaleSequential()
+	.interpolator(d3[palette])
+	.domain(levelsArr)
+	.clamp(true);
+
+	widthColorBar = 300;
+	numberOfCells = 20;
+	$('#mapColorBar_'+mapId).empty();
+	svgColorBar = d3.select('#mapColorBar_'+mapId).append('svg')
+	.attr('width', widthColorBar)
+	.attr('height', 50);
+	svgColorBar.append("g").attr("class", "colorBarLinear");
+	var colorBarLinear = d3.legendColor()
+	.shapeWidth(widthColorBar/numberOfCells)
+	.shapeHeight(15)
+	.shapePadding(0)
+	.cells(numberOfCells)
+	.orient('horizontal')
+	.ascending(reversePalette)
+	.labelAlign('middle')
+	.labelFormat(labelFormat)
+	.scale(colorScale);
+	svgColorBar.select(".colorBarLinear")
+	.call(colorBarLinear);
+}	
+
+//==============================================================================================
+var refreshIntervalId;
+var refreshInterval = 200;
+var forward = true;
+
+//==============================================================================================
+function mapDisplay(kcurrent, lcurrent) {
+	listIds = Object.keys(renderer);
+	for (i in listIds) {
+		Id = listIds[i];
+		varName = renderer[Id].varName;
+		meshUpdateValues(varName, kcurrent, lcurrent);		
+		meshCurrent = group[Id].children[1];		// mesh is the 2nd object in the group
+		meshCurrent = meshUpdate(meshCurrent, meshCurrent.userData.palette, meshCurrent.userData.reversePalette, 
+			meshCurrent.userData.levels);
+		ksize =  dict[varName]['ksize'];
+		lsize =  dict[varName]['lsize'];
+		$('#mapKStep_'+Id).html("K=" + pad(kcurrent,String(ksize).length) + '/' + ksize);
+		$('#mapLStep_'+Id).html("L=" + pad(lcurrent,String(lsize).length) + '/' + lsize);	
+	}
+}
+
+//==============================================================================================
+$('#first').on('click', function() {
+	clearInterval(refreshIntervalId);
+	lcurrent = 1;
+	mapDisplay(kcurrent, lcurrent);
+});
+
+//==============================================================================================
+$('#last').on('click', function() {
+	clearInterval(refreshIntervalId);
+	lcurrent = lsize;
+	mapDisplay(kcurrent, lcurrent);
+});
+
+//==============================================================================================
+$('#next').on('click', function() {
+	clearInterval(refreshIntervalId);
+	lcurrent = Math.min(lcurrent + 1, lsize);
+	mapDisplay(kcurrent, lcurrent);
+});
+
+//==============================================================================================
+$('#prev').on('click', function() {
+	clearInterval(refreshIntervalId);
+	lcurrent = Math.max(lcurrent - 1, 1);
+	mapDisplay(kcurrent, lcurrent);
+});
+
+//==============================================================================================
+$('#play').on('click', function() {
+	forward = true;
+	clearInterval(refreshIntervalId);
+	refreshIntervalId = setInterval(function(){ 
+		lcurrent += 1;
+		if (lcurrent > lsize) {
+			state = $("input[name='state']:checked").val();
+			if (state == 'loop') lcurrent = 1;
+			else if (state == 'reflect') {
+				lcurrent = lsize;
+				$('#reverse').trigger('click');
+			} else {
+				lcurrent = lsize;
+				$('#pause').trigger('click');
+			}
+		}
+		mapDisplay(kcurrent, lcurrent);
+	}, refreshInterval);
+});
+
+//==============================================================================================
+$('#reverse').on('click', function() {
+	forward = false;
+	clearInterval(refreshIntervalId);
+	refreshIntervalId = setInterval(function(){ 
+		lcurrent -= 1;
+		if (lcurrent < 1) {
+			state = $("input[name='state']:checked").val();
+			if (state == 'loop') lcurrent = lsize;
+			else if (state == 'reflect') {
+				lcurrent = 1;
+				$('#play').trigger('click');
+			} else {
+				lcurrent = 1;
+				$('#pause').trigger('click');
+			}
+		}
+		mapDisplay(kcurrent, lcurrent);
+	}, refreshInterval);
+});
+
+//==============================================================================================
+$('#pause').on('click', function() {
+	clearInterval(refreshIntervalId);
+});
+
+//==============================================================================================
+$('#slower').on('click', function() {
+	refreshInterval = Math.min(1000, refreshInterval + 50);
+	clearInterval(refreshIntervalId);
+	if (forward) $('#play').trigger('click');
+	else $('#reverse').trigger('click');
+});
+
+//==============================================================================================
+$('#faster').on('click', function() {
+	refreshInterval = Math.max(50, refreshInterval - 50);
+	clearInterval(refreshIntervalId);
+	if (forward) $('#play').trigger('click');
+	else $('#reverse').trigger('click');
+});
+
+//==============================================================================================
+var current_mapId=0;
+$(document).on('click', '.mapColorBar', function() {
+	//$(document).children(':not(#mapContainer_0)').fadeTo("slow", 0.5, function() { });
+	current_mapId = this.id.split('_')[1];
+	console.log("map", current_mapId);
+	var pos = $('#mapColorBar_'+current_mapId).position();
+	$("#myModal").offset({
+        	top: (pos.top - 100 + 70),	// 100 margin around .modal-dialog
+        	left: (pos.left - 100 - 20)
+        });
+	meshCurrent = group[current_mapId].children[1];		// mesh is the 2nd object in the group
+	palette = meshCurrent.userData.palette;
+	reversePalette = meshCurrent.userData.reversePalette;
+	levels = meshCurrent.userData.levels;
+	bounds = meshCurrent.userData.bounds;
+	//console.log(bounds, levels);
+
+	$('#reversePalette').prop('checked', reversePalette);
+	$('#selectPalette').val(palette);
+	$('#changeLevels').rangeSlider('destroy');
+	$("#changeLevels").rangeSlider({bounds: {min: bounds.min, max: bounds.max}},
+		{defaultValues: {min: levels.min, max: levels.max}},
+		{wheelMode: "scroll"});
+	$('#sliderMin').text(bounds.min);
+	$('#sliderMax').text(bounds.max);
+	wireframe = group[current_mapId].children[2];		// mesh is the 2nd object in the group
+	$('#showWireframe').prop('checked', wireframe.visible);
+	$('#showGraticule').prop('checked', graticule.visible);
+});
+
+
+//==============================================================================================
+$("#boundsSliderZoom").on('click',function(){
+	levels = $('#changeLevels').rangeSlider("values");
+	bounds = $('#changeLevels').rangeSlider("bounds");
+	bounds.min *= 2; bounds.max *= 2;
+	if (bounds.min % 1 === 0) labelFormat = '.01d';
+	else labelFormat = '.01f';
+	$('#sliderMin').text(bounds.min);
+	$('#sliderMax').text(bounds.max);
+	$("#changeLevels").rangeSlider('bounds', bounds.min, bounds.max);
+	$('#changeLevels').rangeSlider('values', levels.min, levels.max);
+	meshCurrent.userData.bounds = bounds;
+});
+
+//==============================================================================================
+$("#boundsSliderUnzoom").on('click',function(){
+	levels = $('#changeLevels').rangeSlider("values");
+	bounds = $('#changeLevels').rangeSlider("bounds");
+	bounds.min /= 2; bounds.max /= 2;
+	if (bounds.min % 1 === 0) labelFormat = '.01d';
+	else labelFormat = '.01f';
+	$('#sliderMin').text(bounds.min);
+	$('#sliderMax').text(bounds.max);
+	$("#changeLevels").rangeSlider('bounds', bounds.min, bounds.max);
+	$('#changeLevels').rangeSlider('values', levels.min, levels.max);
+	meshCurrent.userData.bounds = bounds;
+});
+
+//######################################################################################################
+$("#selectVariable").select2({ 
+	placeholder: 'Loading...'
+});
+
+//######################################################################################################
+$("#selectPalette").select2({});
+
+//######################################################################################################
+
+});
+
+</script>
+
+</head>
+
+<body>
+
+	<!-- ################################################################################### -->
+	<div class="modal" id="myModal">
+		<div class="modal-dialog">
+
+			<div class="modal-content">
+				<div class="modal-header">
+					<button type="button" class="close" data-dismiss="modal">&times;</button>
+					<h4 class="modal-title">Palette/Levels</h4>
+				</div>
+				<div class="modal-body">
+					<div>
+						Palette:
+						<select id="selectPalette">
+							<option value="interpolateViridis">Viridis</option>
+							<option value="interpolateInferno">Inferno</option>
+							<option value="interpolateMagma">Magma</option>
+							<option value="interpolatePlasma">Plasma</option>
+							<option value="interpolateWarm">Warm</option>
+							<option value="interpolateCool">Cool</option>
+							<option value="interpolateCubehelixDefault">CubehelixDefault</option>
+							<option value="interpolateSpectral">Spectral</option>
+							<option value="interpolateRdYlBu" selected="selected">RdYlBu</option>
+							<option value="interpolateRdBu">RdBu</option>
+							<option value="interpolatePuOr">PuOr</option>
+							<option value="interpolateRainbow">Rainbow</option>
+						</select>
+					</div>
+					<hr class="style1">
+					<div class="checkboxGroup">
+						<div class="checkbox-inline">
+							<label><input id="reversePalette" type="checkbox">Reverse</label>
+						</div>
+						<div class="checkbox-inline">
+							<label><input id="showWireframe" type="checkbox">Cell bounds</label>
+						</div>
+						<div class="checkbox-inline">
+							<label><input id="showGraticule" type="checkbox" checked>Graticule</label>
+						</div>
+					</div>
+					<hr class="style1">
+					<div>
+						Levels:
+						<div class="sliderRow">
+							<span class="labelSlider" id="sliderMin"></span>
+							<div id="changeLevels"></div>
+							<span class="labelSlider" id="sliderMax"></span>
+						</div>
+						<div class="sliderRow">
+							<button type="button" class="btn btn-default btn-xs" id="boundsSliderUnzoom">slider range / 2</button>
+							<button type="button" class="btn btn-default btn-xs" id="boundsSliderZoom">slider range x 2</button>
+						</div>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<input id="changesToAll" type="checkbox" data-toggle="toggle" 
+					data-width="200" data-on="Apply changes to all" data-off="Only for the current map">
+					<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+				</div>
+			</div>
+
+		</div>
+	</div>
+	<!-- ################################################################################### -->
+
+	<div class="container">
+
+		<div class="row">
+			<div id='mapSpace'></div>
+		</div>
+
+		<div class="controls">
+			<div class="row">
+				<div class='controlsItem'>
+					<select id="selectVariable">
+					</select>
+					<button type="button" class="btn btn-primary" id="addMap">Add map</button>
+				</div>
+			</div>
+			<div class="row">
+				<div class="playControls">
+					<div class="btn-group btn-group-xm">
+						<button type="button" class="btn btn-default" id="first"><img src="icons/first.png"></button>
+						<button type="button" class="btn btn-default" id="prev"><img src="icons/prev.png"></button>
+						<button type="button" class="btn btn-default" id="reverse"><img src="icons/reverse.png"></button>
+						<button type="button" class="btn btn-default" id="pause"><img src="icons/pause.png"></button>
+						<button type="button" class="btn btn-default" id="play"><img src="icons/play.png"></button>
+						<button type="button" class="btn btn-default" id="next"><img src="icons/next.png"></button>
+						<button type="button" class="btn btn-default" id="last"><img src="icons/last.png"></button>
+					</div>
+					<div>
+						<div class="btn-group btn-group-xm">
+							<button type="button" class="btn btn-default" id="slower">Slower</button>
+							<button type="button" class="btn btn-default" id="faster">Faster</button>
+						</div>
+					</div>
+					<div>
+						<label class="radio-inline"><input type="radio" name="state" value="once">Once</label>
+						<label class="radio-inline"><input type="radio" name="state" value="loop" checked>Loop</label>
+						<label class="radio-inline"><input type="radio" name="state" value="reflect">Reflect</label> 
+						<div>
+						</div>
+					</div>
+				</div>
+
+			</div>
+
+		</body>
+		</html>
